@@ -1,8 +1,8 @@
 // pull in our models. This will automatically load the index.js from that folder
 const models = require('../models');
 
-// get the Cat model
-const { Cat } = models;
+// get the Cat & Dog model
+const { Cat, Dog } = models;
 
 // Function to handle rendering the index page.
 const hostIndex = async (req, res) => {
@@ -283,15 +283,79 @@ const notFound = (req, res) => {
   });
 };
 
+const createDog = async (req, res) => {
+  if (!req.body.name || !req.body.breed || !req.body.age) {
+    return res.status(400).json({ error: 'firstname, lastname and beds are all required' });
+  }
+
+  const dogData = {
+    name: `${req.body.name}`,
+    breed: `${req.body.breed}`,
+    age: req.body.age,
+    createdDate: req.body.createdDate,
+  };
+
+  const newDog = new Dog(dogData);
+
+  try {
+    await newDog.save();
+    return res.status(201).json({
+      name: newDog.name,
+      breed: newDog.breed,
+      age: newDog.age,
+      createdDate: newDog.createdDate,
+    });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ error: 'failed to create dog' });
+  }
+};
+
+const searchDogByName = async (req, res) => {
+  if (!req.query.name) {
+    return res.status(400).json({ error: 'Name is required to perform a search' });
+  }
+
+  let doc;
+  try {
+    doc = await Dog.findOneAndUpdate({ name: req.query.name }, { $inc: { age: 1 } }, {
+      returnDocument: 'after',
+    }).lean().exec();
+  } catch (err) {
+    return res.status(500).json({ error: 'something went wrong' });
+  }
+
+  if (!doc) {
+    return res.status(404).json({ error: 'dog not found!' });
+  }
+
+  return res.status(200).json({
+    name: doc.name, breed: doc.breed, age: doc.age, createdDate: doc.createdDate,
+  });
+};
+
+const hostPage4 = async (req, res) => {
+  try {
+    const docs = await Dog.find({}).lean().exec();
+    return res.render('page4', { dogs: docs });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({ error: 'failed to find cats' });
+  }
+};
+
 // export the relevant public controller functions
 module.exports = {
   index: hostIndex,
   page1: hostPage1,
   page2: hostPage2,
   page3: hostPage3,
+  page4: hostPage4,
   getName,
   setName,
   updateLast,
   searchName,
   notFound,
+  createDog,
+  searchDogByName,
 };
